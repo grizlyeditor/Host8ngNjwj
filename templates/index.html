@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>HostinWeb — Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">HostinWeb</div>
+    <div id="auth-area">
+      <!-- will be populated by JS -->
+      <button id="btn-login">Login</button>
+    </div>
+  </div>
+
+  <main class="main">
+    <section id="auth-section" class="card">
+      <h2>Login / Register</h2>
+      <input id="email" placeholder="Email" type="email" />
+      <input id="password" placeholder="Password" type="password" />
+      <div class="row">
+        <button id="btnSignIn">Sign in</button>
+        <button id="btnSignUp">Sign up</button>
+      </div>
+      <div id="auth-msg"></div>
+    </section>
+
+    <section id="dashboard" class="card hidden">
+      <div class="row">
+        <h2>Your Bots</h2>
+        <div>
+          <input id="fileInput" type="file" accept=".py">
+          <button id="btnUpload">Upload</button>
+        </div>
+      </div>
+
+      <div id="filesList"></div>
+      <div id="api-result"></div>
+    </section>
+  </main>
+
+<script>
+  // ---- Paste your Firebase web config here ----
+  const firebaseConfig = {
+    apiKey: "PASTE_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT",
+    // other fields...
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // UI refs
+  const authSection = document.getElementById('auth-section');
+  const dashboard = document.getElementById('dashboard');
+  const authMsg = document.getElementById('auth-msg');
+  const filesList = document.getElementById('filesList');
+  const apiResult = document.getElementById('api-result');
+
+  // sign up / in
+  document.getElementById('btnSignUp').onclick = async () => {
+    const e = document.getElementById('email').value;
+    const p = document.getElementById('password').value;
+    try {
+      await auth.createUserWithEmailAndPassword(e, p);
+    } catch(err) { authMsg.innerText = err.message; }
+  };
+  document.getElementById('btnSignIn').onclick = async () => {
+    const e = document.getElementById('email').value;
+    const p = document.getElementById('password').value;
+    try {
+      await auth.signInWithEmailAndPassword(e, p);
+    } catch(err) { authMsg.innerText = err.message; }
+  };
+
+  // handle auth state
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      // show dashboard
+      authSection.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      updateAuthArea(user);
+      await loadFiles();
+    } else {
+      authSection.classList.remove('hidden');
+      dashboard.classList.add('hidden');
+      updateAuthArea(null);
+    }
+  });
+
+  function updateAuthArea(user){
+    const area = document.getElementById('auth-area');
+    area.innerHTML = '';
+    if (!user) {
+      const b = document.createElement('button'); b.id='btn-login'; b.innerText='Login'; area.appendChild(b);
+      b.onclick = ()=>{ document.getElementById('email').focus() };
+      return;
+    }
+    const span = document.createElement('span'); span.innerText = user.email; area.appendChild(span);
+    const out = document.createElement('button'); out.innerText='Logout'; area.appendChild(out);
+    out.onclick = ()=>auth.signOut();
+  }
+
+  async function getIdToken() {
+    const user = auth.currentUser;
+    if (!user) throw new Error('not logged in');
+    return await user.getIdToken();
+  }
+
+  // upload file
+  document.getElementById('btnUpload').onclick = async ()=>{
+    try{
+      const f = document.getElementById('fileInput').files[0];
+      if (!f) { apiResult.innerText='Pick a .py file'; return; }
+      const token = await getIdToken();
+      const fd = new FormData();
+      fd.append('file', f);
+      const res = await fetch('/api/upload', {
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token},
+        body: fd
+      });
+      const data = await res.json();
+      apiResult.innerText = JSON.stringify(data);
+      await loadFiles();
+    }catch(err){ apiResult.innerText = err.message; }
+  };
+
+  // load files list
+  async function loadFiles(){
+    filesList.innerHTML = 'Loading...';
+    try{
+      const token = await getIdToken();
+      const res = await fetch('/api/files', { headers: {'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      filesList.innerHTML = '';
+      data.files.forEach(f => {
+        const card = document.createElement('div'); card.className='file-card';
+        card.innerHTML = `<div class="meta"><a href="${f.path}" target="_blank">${f.name}</a></div>
+                          <div class="actions">
+                            <button class="run-btn">Run</button>
+                            <button class="stop-btn">Stop</button>
+                          </div>`;
+        // run
+        card.querySelector('.run-btn').onclick = async ()=>{
+          apiResult.innerText = 'Starting...';
+          const res2 = await fetch('/api/start', {
+            method:'POST',
+            headers: {'Authorization':'Bearer '+token, 'Content-Type':'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({ filename: f.name })
+          });
+          apiResult.innerText = JSON.stringify(await res2.json());
+        };
+        // stop
+        card.querySelector('.stop-btn').onclick = async ()=>{
+          apiResult.innerText = 'Stopping...';
+          const res2 = await fetch('/api/stop', {
+            method:'POST', headers: {'Authorization':'Bearer '+token}
+          });
+          apiResult.innerText = JSON.stringify(await res2.json());
+        };
+
+        filesList.appendChild(card);
+      });
+      if (data.files.length === 0) filesList.innerHTML = '<i>No files yet. Upload .py to begin.</i>';
+    }catch(err){ filesList.innerText = err.message; }
+  }
+</script>
+</body>
+  </html>
