@@ -1,0 +1,16 @@
+/* static/style.css */
+body{font-family:Inter,system-ui; background:linear-gradient(120deg,#0f172a,#0b1220); color:#e6eef8; margin:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:rgba(255,255,255,0.02);}
+.brand{font-weight:700;font-size:18px}
+.card{background:rgba(255,255,255,0.03);padding:18px;border-radius:10px;margin:20px}
+.main{max-width:980px;margin:20px auto;padding:10px}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+input{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+button.run{background:#28a745;color:white} /* green */
+.file-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin:10px 0;background:rgba(0,0,0,0.15)}
+.file-card .actions button{margin-left:8px;padding:6px 10px;border-radius:6px}
+.run-btn{background:#28a745;color:white;border:none}
+.stop-btn{background:#6c757d;color:white;border:none}
+.hidden{display:none}
+#filesList a{color:#9ae6b4}
