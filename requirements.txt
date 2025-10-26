@@ -1,4 +1,7 @@
-firebase-admin
-flask
-flask-cors
-flask-sqlalchemy
+Flask==3.0.3
+Flask-Cors==4.0.1
+firebase-admin==6.5.0
+python-dotenv==1.0.1
+Werkzeug==3.0.3
+requests==2.32.3
+gunicorn==23.0.0
